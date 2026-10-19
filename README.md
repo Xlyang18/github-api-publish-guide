@@ -256,3 +256,20 @@ curl -sS -H "Authorization: Bearer $TOKEN" \
 ## 许可
 
 MIT
+
+---
+
+## 补充：又踩了 4 个（写脚本时才会遇到）
+
+| # | 现象 | 原因 | 对策 |
+|---|---|---|---|
+| 11 | `Argument list too long`，只有大文件（png/icns）失败 | base64 后超 `ARG_MAX`（约 1MB），不能当命令行参数传 | base64 写**临时文件**，python 用 `open(os.environ['B64FILE'])` 读；curl 用 `--data-binary @文件` |
+| 12 | `ok： unbound variable`，推到一半才崩 | `echo "$ok，..."` 中文紧跟变量名，被当成 `$ok，` | 中文前一律用 `${var}` |
+| 13 | Python `SyntaxError`，但 `bash -n` 检查通过 | `"$(python3 -c "...{'k':v}...")"` 里花括号被 shell 当展开吃掉，**只在运行时炸** | JSON 生成器写成**独立 .py 脚本**，shell 只传 `--key value`，别内联字典 |
+| 14 | tag 创建成功但 `object` 为空 | `/git/refs/heads/main` 的 sha 在 **`object.sha`**，不在顶层 | 用点路径取值，别用 `d.get('sha')` |
+
+### 第 10~14 条的共同教训
+
+前 10 个坑是**语义错**，这 4 个是**工程错**——`bash -n` 查不出来，只有真跑才暴露。
+
+所以：**任何「上传脚本」都必须对真实仓库跑一遍完整流程**，包括大文件和中途崩溃的场景。
